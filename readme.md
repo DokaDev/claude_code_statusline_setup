@@ -1,6 +1,6 @@
 # Claude Code Statusline Setup
 
-<img width="564" height="132" alt="image" src="https://github.com/user-attachments/assets/b5457da5-6f02-4c85-be25-63244c38ee79" />
+<img width="573" height="136" alt="image" src="https://github.com/user-attachments/assets/92602e38-ba58-4200-ae0f-a5275a4ab593" />
 
 
 #### Requirements
