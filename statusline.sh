@@ -37,26 +37,22 @@ frac=$(( filled_tenths % 10 ))
 if   [ $frac -ge 8 ]; then SUB="▉"; elif [ $frac -ge 6 ]; then SUB="▊"; elif [ $frac -ge 4 ]; then SUB="▌"; elif [ $frac -ge 2 ]; then SUB="▎"; else SUB=""; fi
 
 C0='\033[38;5;51m'; C1='\033[38;5;82m'; C2='\033[38;5;220m'; C3='\033[38;5;196m'; CEMPTY='\033[38;5;237m'
+if [ "$PCT" -ge 75 ]; then PCT_COL="$C3"; elif [ "$PCT" -ge 50 ]; then PCT_COL="$C2"; elif [ "$PCT" -ge 25 ]; then PCT_COL="$C1"; else PCT_COL="$C0"; fi
 BAR=""
 for (( i=0; i<BAR_WIDTH; i++ )); do
-  pos=$(( i * 100 / BAR_WIDTH ))
-  if   [ $pos -lt 25 ]; then COL="$C0"; elif [ $pos -lt 50 ]; then COL="$C1"; elif [ $pos -lt 75 ]; then COL="$C2"; else COL="$C3"; fi
-  if [ $i -lt $full_blocks ]; then BAR+="${COL}█"; elif [ $i -eq $full_blocks ] && [ -n "$SUB" ]; then BAR+="${COL}${SUB}"; else BAR+="${CEMPTY}░"; fi
+  if [ $i -lt $full_blocks ]; then BAR+="${PCT_COL}█"; elif [ $i -eq $full_blocks ] && [ -n "$SUB" ]; then BAR+="${PCT_COL}${SUB}"; else BAR+="${CEMPTY}░"; fi
 done
 BAR+="$RESET"
 
-# PCT Color
-if [ "$PCT" -ge 75 ]; then PCT_COL="$C3"; elif [ "$PCT" -ge 50 ]; then PCT_COL="$C2"; elif [ "$PCT" -ge 25 ]; then PCT_COL="$C1"; else PCT_COL="$C0"; fi
-
 # Runtime Info String
 RUNTIMES=""
-[ -n "$NODE_VERSION" ] && RUNTIMES+="${GREEN} ${NODE_VERSION}${RESET} "
-[ -n "$PYTHON_VERSION" ] && RUNTIMES+="${MAGENTA} ${PYTHON_VERSION}${RESET} "
+[ -n "$NODE_VERSION" ] && RUNTIMES+="${GREEN} ${NODE_VERSION}${RESET} "
+[ -n "$PYTHON_VERSION" ] && RUNTIMES+="${MAGENTA} ${PYTHON_VERSION}${RESET} "
 
 # Line 1: Identity & Git
-LINE1="${BOLD}${CYAN}󰚩 ${MODEL}${RESET} ${GRAY}❯${RESET} ${BLUE} ${DIR_NAME}${RESET}"
+LINE1="${BOLD}${CYAN}󰚩 ${MODEL}${RESET} ${GRAY}❯${RESET} ${BLUE} ${DIR_NAME}${RESET}"
 if [ -n "$GIT_BRANCH" ]; then
-  LINE1+=" ${SEP} ${YELLOW} ${GIT_BRANCH}${GIT_STATUS}${RESET}"
+  LINE1+=" ${SEP} ${YELLOW} ${GIT_BRANCH}${GIT_STATUS}${RESET}"
 fi
 
 # Line 2: Stats & Runtimes (Updated Cost Icon to 󰡗 Cash Multiple)
