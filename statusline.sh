@@ -46,13 +46,13 @@ BAR+="$RESET"
 
 # Runtime Info String
 RUNTIMES=""
-[ -n "$NODE_VERSION" ] && RUNTIMES+="${GREEN} ${NODE_VERSION}${RESET} "
-[ -n "$PYTHON_VERSION" ] && RUNTIMES+="${MAGENTA} ${PYTHON_VERSION}${RESET} "
+[ -n "$NODE_VERSION" ] && RUNTIMES+="${GREEN} ${NODE_VERSION}${RESET} "
+[ -n "$PYTHON_VERSION" ] && RUNTIMES+="${MAGENTA} ${PYTHON_VERSION}${RESET} "
 
 # Line 1: Identity & Git
-LINE1="${BOLD}${CYAN}󰚩 ${MODEL}${RESET} ${GRAY}❯${RESET} ${BLUE} ${DIR_NAME}${RESET}"
+LINE1="${BOLD}${CYAN}󰚩 ${MODEL}${RESET} ${GRAY}❯${RESET} ${BLUE} ${DIR_NAME}${RESET}"
 if [ -n "$GIT_BRANCH" ]; then
-  LINE1+=" ${SEP} ${YELLOW} ${GIT_BRANCH}${GIT_STATUS}${RESET}"
+  LINE1+=" ${SEP} ${YELLOW} ${GIT_BRANCH}${GIT_STATUS}${RESET}"
 fi
 
 # Line 2: Stats & Runtimes (Updated Cost Icon to 󰡗 Cash Multiple)
