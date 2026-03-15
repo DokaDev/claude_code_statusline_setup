@@ -6,10 +6,11 @@
  * No external dependencies — only node:* built-ins.
  */
 
-import { readFileSync, existsSync, statSync, readdirSync } from 'node:fs';
+import { readFileSync, existsSync, statSync, readdirSync, writeFileSync, mkdirSync, renameSync } from 'node:fs';
 import { execSync } from 'node:child_process';
 import { homedir } from 'node:os';
-import { join, basename } from 'node:path';
+import { join, basename, dirname } from 'node:path';
+import { createHash } from 'node:crypto';
 
 // ─── ANSI Colours ─────────────────────────────────────────────────────────────
 const CYAN    = '\x1b[36m';
@@ -45,9 +46,7 @@ const BAR_GRADIENT = [
 const CEMPTY = '\x1b[38;5;237m';  // empty blocks
 
 // Rate limit colours
-const RATE_OK   = '\x1b[38;5;51m';
-const RATE_WARN = '\x1b[38;5;220m';
-const RATE_CRIT = '\x1b[38;5;196m';
+// Rate limit colours now use the 14-step rateCol() gradient function
 
 const SEP = `${GRAY}|${RESET}`;
 
@@ -74,11 +73,6 @@ function fileAgeMins(path) {
 function fileMtime(path) {
   try { return statSync(path).mtimeMs; }
   catch { return null; }
-}
-
-function gradientColor(pos100) {
-  const idx = Math.min(Math.floor(pos100 / 100 * BAR_GRADIENT.length), BAR_GRADIENT.length - 1);
-  return BAR_GRADIENT[Math.max(0, idx)];
 }
 
 // Format a duration in ms as "Xm", "Xh Ym", or "Xd Yh"
@@ -304,12 +298,119 @@ function parseTranscript(transcriptPath) {
 }
 
 // ─── Rate Limit Cache ─────────────────────────────────────────────────────────
+const POLL_INTERVAL_MS = 90_000;
+
+function fetchAndCacheRateLimit() {
+  const cachePath = join(homedir(), '.claude', 'plugins', 'oh-my-claudecode', '.usage-cache.json');
+  try {
+    // Get credentials from macOS Keychain
+    let raw = null;
+    try {
+      const serviceName = process.env.CLAUDE_CONFIG_DIR
+        ? `Claude Code-credentials-${createHash('sha256').update(process.env.CLAUDE_CONFIG_DIR).digest('hex').slice(0, 8)}`
+        : 'Claude Code-credentials';
+      raw = execSync(`/usr/bin/security find-generic-password -s "${serviceName}" -w`, { timeout: 3000, stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim();
+    } catch { /* keychain not available */ }
+
+    // Fall back to file
+    if (!raw) {
+      const credFile = join(homedir(), '.claude', '.credentials.json');
+      if (existsSync(credFile)) {
+        raw = readFileSync(credFile, 'utf8').trim();
+      }
+    }
+
+    if (!raw) return null;
+
+    let creds;
+    try { creds = JSON.parse(raw); } catch { return null; }
+
+    let accessToken = creds?.claudeAiOauth?.accessToken || creds?.accessToken || null;
+    const refreshToken = creds?.claudeAiOauth?.refreshToken || creds?.refreshToken || null;
+    const expiresAt = creds?.claudeAiOauth?.expiresAt || creds?.expiresAt || null;
+
+    if (!accessToken) return null;
+
+    // Refresh token if expired
+    if (expiresAt && Date.now() >= expiresAt && refreshToken) {
+      try {
+        const refreshResponse = execSync(
+          `curl -s --max-time 10 -X POST "https://platform.claude.com/v1/oauth/token" ` +
+          `-H "Content-Type: application/x-www-form-urlencoded" ` +
+          `--data-urlencode "grant_type=refresh_token" ` +
+          `--data-urlencode "refresh_token=${refreshToken}" ` +
+          `--data-urlencode "client_id=9d1c250a-e61b-44d9-88ed-5944d1962f5e"`,
+          { timeout: 12000 }
+        ).toString();
+        const refreshData = JSON.parse(refreshResponse);
+        if (refreshData?.access_token) {
+          accessToken = refreshData.access_token;
+        }
+      } catch { /* use existing token */ }
+    }
+
+    // Call the API
+    const responseStr = execSync(
+      `curl -s --max-time 10 ` +
+      `-H "Authorization: Bearer ${accessToken}" ` +
+      `-H "anthropic-beta: oauth-2025-04-20" ` +
+      `-H "Content-Type: application/json" ` +
+      `"https://api.anthropic.com/api/oauth/usage"`,
+      { timeout: 12000 }
+    ).toString();
+
+    const response = JSON.parse(responseStr);
+    if (!response || response.error) return null;
+
+    const now = Date.now();
+    const cacheData = {
+      timestamp: now,
+      data: {
+        fiveHourPercent: Math.round(response.five_hour?.utilization ?? 0),
+        weeklyPercent: Math.round(response.seven_day?.utilization ?? 0),
+        fiveHourResetsAt: response.five_hour?.resets_at || null,
+        weeklyResetsAt: response.seven_day?.resets_at || null,
+        sonnetWeeklyPercent: Math.round(response.seven_day_sonnet?.utilization ?? 0),
+        sonnetWeeklyResetsAt: response.seven_day_sonnet?.resets_at || null,
+      },
+      error: false,
+      source: 'anthropic',
+      lastSuccessAt: now,
+    };
+
+    // Write atomically
+    const cacheDir = dirname(cachePath);
+    mkdirSync(cacheDir, { recursive: true });
+    const tmpPath = `${cachePath}.tmp.${process.pid}`;
+    writeFileSync(tmpPath, JSON.stringify(cacheData, null, 2), 'utf8');
+    renameSync(tmpPath, cachePath);
+
+    return cacheData.data;
+  } catch { return null; }
+}
+
 function loadRateLimit() {
   const cachePath = join(homedir(), '.claude', 'plugins', 'oh-my-claudecode', '.usage-cache.json');
-  const data = readJson(cachePath);
-  if (!data || !data.data) return null;
-  if (data.timestamp && (Date.now() - data.timestamp) > 24 * 60 * 60 * 1000) return null; // 24h stale limit
-  return data.data;
+  try {
+    const data = readJson(cachePath);
+    const age = data?.timestamp ? Date.now() - data.timestamp : Infinity;
+
+    // Cache is fresh — return it
+    if (data?.data && age < POLL_INTERVAL_MS) {
+      return data.data;
+    }
+
+    // Cache is missing or stale — fetch fresh data
+    const fresh = fetchAndCacheRateLimit();
+    if (fresh) return fresh;
+
+    // Fetch failed — return stale cache as fallback (up to 24h)
+    if (data?.data && age < 24 * 60 * 60 * 1000) {
+      return data.data;
+    }
+
+    return null;
+  } catch { return null; }
 }
 
 // ─── Session Duration ─────────────────────────────────────────────────────────
