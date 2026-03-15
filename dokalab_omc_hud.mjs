@@ -32,6 +32,7 @@ const ICON_FLASH    = String.fromCodePoint(0xF0329);  // 󰌩 skills
 const ICON_SPEED    = String.fromCodePoint(0xF04C5);  // 󰓅 rate limit
 const ICON_PROGRESS = String.fromCodePoint(0xF070E);  // 󰜎 background
 const ICON_COST     = String.fromCodePoint(0xF0857);  // 󰡗 cost
+const ICON_THINKING = String.fromCodePoint(0xF0803);  // 󰠃 thinking (head_cog)
 
 // 256-colour smooth gradient for context bar (cyan → green → yellow → orange → red)
 const BAR_GRADIENT = [
@@ -213,6 +214,7 @@ function parseTranscript(transcriptPath) {
     agentCount: 0,
     toolCallCount: 0,
     skillCount: 0,
+    thinkingActive: false,
   };
   try {
     if (!transcriptPath || !existsSync(transcriptPath)) return result;
@@ -223,6 +225,15 @@ function parseTranscript(transcriptPath) {
       if (!line.trim()) continue;
       try {
         const entry = JSON.parse(line);
+
+        // Thinking/reasoning state detection
+        if (entry.type === 'assistant' && Array.isArray(entry.message?.content)) {
+          for (const block of entry.message.content) {
+            if (block.type === 'thinking' || block.type === 'reasoning') {
+              result._lastThinkingSeen = entry.timestamp || Date.now();
+            }
+          }
+        }
 
         // Tokens (cost calculated after parsing based on model)
         if (entry.costUSD) result.costUSD += entry.costUSD;
@@ -282,6 +293,12 @@ function parseTranscript(transcriptPath) {
     }
 
     result.agentCount = agentSet.size;
+
+    // Thinking is active if last seen within 30 seconds
+    if (result._lastThinkingSeen) {
+      const age = Date.now() - new Date(result._lastThinkingSeen).getTime();
+      result.thinkingActive = age <= 30_000;
+    }
   } catch { /* graceful fallback */ }
   return result;
 }
@@ -399,7 +416,7 @@ function main() {
   // ─────────────────────────────────────────────────────────────────────────────
   let line1 = '';
 
-  line1 += `${BOLD}${CYAN}󰚩 ${model}${RESET} ${GRAY}❯${RESET} ${BLUE} ${dirName}${RESET}`;
+  line1 += `${BOLD}${CYAN}󰚩 ${model}${RESET}${tx.thinkingActive ? ` ${MAGENTA}${ICON_THINKING}${RESET}` : ""} ${GRAY}❯${RESET} ${BLUE} ${dirName}${RESET}`;
 
   if (gitBranch) {
     line1 += ` ${SEP} ${YELLOW} ${gitBranch}${gitDirty ? '*' : ''}${RESET}`;
