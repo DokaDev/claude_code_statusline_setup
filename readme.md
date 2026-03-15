@@ -41,6 +41,7 @@ A custom statusline for [Claude Code](https://docs.anthropic.com/en/docs/claude-
 - **Node.js** v18 or later
 - **Nerd Font** v3.0+ (required for icon rendering)
   - Recommended: `JetBrainsMono Nerd Font Propo` — all icons in this project have been tested and optimised for this font. Other Nerd Fonts may render certain glyphs differently or not at all.
+- **Terminal colour scheme** — the screenshot above uses a [Dracula](https://draculatheme.com) colour scheme on iTerm2. For the exact appearance shown, the [Dracula PRO](https://draculatheme.com/pro) "Van Helsing" variant is used.
 - [oh-my-claudecode](https://github.com/Yeachan-Heo/oh-my-claudecode) (optional — for rate limit & orchestration features)
 
 ## Installation
