@@ -499,14 +499,7 @@ function fetchAndCacheRateLimit() {
 
         if (expiresAt && Date.now() >= expiresAt && refreshToken) {
             try {
-                const refreshResponse = execFileSync("curl", [
-                    "-s", "--max-time", "10", "-X", "POST",
-                    "https://platform.claude.com/v1/oauth/token",
-                    "-H", "Content-Type: application/x-www-form-urlencoded",
-                    "--data-urlencode", "grant_type=refresh_token",
-                    "--data-urlencode", `refresh_token=${refreshToken}`,
-                    "--data-urlencode", `client_id=${OAUTH_CLIENT_ID}`,
-                ], { timeout: 12000, encoding: "utf8" });
+                const refreshResponse = execFileSync("curl", ["-s", "--max-time", "10", "-X", "POST", "https://platform.claude.com/v1/oauth/token", "-H", "Content-Type: application/x-www-form-urlencoded", "--data-urlencode", "grant_type=refresh_token", "--data-urlencode", `refresh_token=${refreshToken}`, "--data-urlencode", `client_id=${OAUTH_CLIENT_ID}`], { timeout: 12000, encoding: "utf8" });
                 const refreshData = JSON.parse(refreshResponse);
                 if (refreshData?.access_token) accessToken = refreshData.access_token;
             } catch {
@@ -514,13 +507,7 @@ function fetchAndCacheRateLimit() {
             }
         }
 
-        const responseStr = execFileSync("curl", [
-            "-s", "--max-time", "10",
-            "-H", `Authorization: Bearer ${accessToken}`,
-            "-H", "anthropic-beta: oauth-2025-04-20",
-            "-H", "Content-Type: application/json",
-            "https://api.anthropic.com/api/oauth/usage",
-        ], { timeout: 12000, encoding: "utf8" });
+        const responseStr = execFileSync("curl", ["-s", "--max-time", "10", "-H", `Authorization: Bearer ${accessToken}`, "-H", "anthropic-beta: oauth-2025-04-20", "-H", "Content-Type: application/json", "https://api.anthropic.com/api/oauth/usage"], { timeout: 12000, encoding: "utf8" });
 
         const response = JSON.parse(responseStr);
         if (!response || response.error) return null;
