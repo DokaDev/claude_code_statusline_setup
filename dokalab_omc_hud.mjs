@@ -771,7 +771,7 @@ function main() {
 
     const runtimeParts = [];
     if (nodeVer) runtimeParts.push(`${GREEN}󰎙 ${nodeVer}${RESET}`);
-    if (pythonVer) runtimeParts.push(`${MAGENTA} ${pythonVer}${RESET}`);
+    if (pythonVer) runtimeParts.push(`${MAGENTA} ${pythonVer}${RESET}`);
     if (runtimeParts.length) {
         line1 += ` ${SEP} ${runtimeParts.join("  ")}`;
     }
@@ -805,7 +805,7 @@ function main() {
     line2 += ` ${CYAN}${ICON_ROBOT} ${WHITE}${tx.agentCallCount}${RESET}`;
     line2 += ` ${MAGENTA}${ICON_FLASH} ${WHITE}${tx.skillCount}${RESET}`;
     if (tx.lastSkill) {
-        line2 += ` ${CYAN}${tx.lastSkill.name}${RESET}`;
+        line2 += ` ${MAGENTA}${tx.lastSkill.name}${RESET}`;
     }
 
     // Background tasks (always show on Line 2)
