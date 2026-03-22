@@ -556,7 +556,7 @@ function loadRateLimit() {
 }
 
 // ─── Session Duration ─────────────────────────────────────────────────────────
-function getSessionDurationMs(omcBase, transcriptPath) {
+function getSessionDurationMs(omcBase, transcriptPath, sessionStart) {
     try {
         const hudStatePath = join(omcBase, "state", "hud-state.json");
         const hudState = readJson(hudStatePath);
@@ -566,6 +566,9 @@ function getSessionDurationMs(omcBase, transcriptPath) {
         if (transcriptPath) {
             const mtime = fileMtime(transcriptPath);
             if (mtime) return Date.now() - mtime;
+        }
+        if (sessionStart instanceof Date) {
+            return Date.now() - sessionStart.getTime();
         }
     } catch {
         /* graceful */
@@ -747,7 +750,7 @@ function main() {
     const sessionSummary = loadSessionSummary(omcBase, sessionId);
 
     const rateData = loadRateLimit();
-    const sessionDurationMs = getSessionDurationMs(omcBase, transcriptPath);
+    const sessionDurationMs = getSessionDurationMs(omcBase, transcriptPath, tx._sessionStart);
     const bgTaskCount = getBackgroundTaskCount(omcBase);
 
     // ═════════════════════════════════════════════════════════════════════════════
